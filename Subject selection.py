@@ -1,229 +1,111 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime
 import csv
-import os
-import subprocess
+from datetime import datetime  # Although not directly used in this version, importing it is a good habit
 
-CSV_FILE = "programs/exams.csv"
-BACKUP_FILE = "programs/exams_backup.csv"
-SUBJECTS_FILE = "programs/selected_subjects.csv"
-CHECK_INTERVAL = 1000
+def show_subjects(event):
+    """Updates the dropdown list options when the selection box is clicked."""
+    combobox = event.widget
+    if combobox == combo1:
+        subjects = ["English", "Literature"]
+    else:
+        subjects = ["General Mathematics", "Method Mathematics", "Specialist Mathematics",
+                    "Biology", "Chemistry", "Physics", "Psychology", "History Revolutions",
+                    "Modern History", "Politics", "Sociology", "Accounting",
+                    "Business Management", "Economics", "Legal Studies",
+                    "Software Development", "French", "Latin", "Chinese",
+                    "Music Composition", "Health and Human Development",
+                    "Physical Education", "Media", "Visual Communication Design"]
+    combobox['values'] = subjects
 
-class ExamTodoApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Exam To-Do List")
+def confirm_selection():
+    """Gets the selected subjects and writes them to a CSV file, ignoring 'Select Subject' and closes the window."""
+    selected_subjects_with_placeholder = [combo1.get(), combo2.get(), combo3.get(),
+                                         combo4.get(), combo5.get(), combo6.get()]
+    actual_selected_subjects = [subject for subject in selected_subjects_with_placeholder if subject != "Select Subject"]
 
-        # Set ttk theme
-        ttk.style = ttk.Style(root)
-        ttk.style.theme_use('clam')
+    print("Selected subjects (with placeholder):", selected_subjects_with_placeholder)
+    print("Actual selected subjects:", actual_selected_subjects)
 
-        self.exams = []
-        self.available_subjects = self.load_available_subjects()
-        self.last_modified_time = self.get_subjects_file_modified_time()
+    if not actual_selected_subjects:
+        messagebox.showwarning("Warning", "Please select at least one subject.")
+        return
 
-        self.create_input_frame()
-        self.create_list_frame()
-        self.load_exams_from_csv()
-        self.periodic_check()
+    try:
+        with open("programs/selected_subjects.csv", mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(actual_selected_subjects)
+        messagebox.showinfo("Success", f"The selected subjects have been saved ({len(actual_selected_subjects)} selected).")
+        root.destroy()  # Close the main window
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred while saving the file: {e}")
 
-    def get_subjects_file_modified_time(self):
-        if os.path.exists(SUBJECTS_FILE):
-            return os.path.getmtime(SUBJECTS_FILE)
-        return None
+# Create the main window
+root = tk.Tk()
+root.title("Subject Selection")
 
-    def load_available_subjects(self):
-        subjects = []
-        if os.path.exists(SUBJECTS_FILE):
-            try:
-                with open(SUBJECTS_FILE, mode='r', newline='', encoding='utf-8') as f:
-                    reader = csv.reader(f)
-                    for row in reader:
-                        subjects.extend(row)
-            except Exception as e:
-                messagebox.showerror("Error", f"Error loading subject file: {e}")
-        return sorted(set(subjects))
+# Configure style for better look and feel
+style = ttk.Style(root)
+style.theme_use('clam')  # Or try 'alt', 'default', 'classic'
 
-    def run_subject_selector(self):
-        try:
-            subprocess.Popen(["python", "Subject selection.py"])
-            messagebox.showinfo("Info", "Subject selector opened. Please return after selecting subjects.")
-        except FileNotFoundError:
-            messagebox.showerror("Error", "Subject selection.py not found.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Error running subject selector: {e}")
+# Set a larger default size for the window
+window_width = 240  # Increased width
+window_height = 300 # Increased height
+root.geometry(f"{window_width}x{window_height}")
 
-    def update_available_subjects(self):
-        new_subjects = self.load_available_subjects()
-        if new_subjects != self.available_subjects:
-            self.available_subjects = new_subjects
-            self.subject_combo['values'] = self.available_subjects
-            if self.available_subjects and self.subject_var.get() not in self.available_subjects:
-                self.subject_var.set(self.available_subjects[0])
+# Improved layout using LabelFrames for better grouping
+group1 = ttk.LabelFrame(root, text="Select Subjects (Optional)")
+group1.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+group1.columnconfigure(0, weight=1)
+group1.columnconfigure(1, weight=1)
 
-    def periodic_check(self):
-        current_modified_time = self.get_subjects_file_modified_time()
-        if current_modified_time and current_modified_time != self.last_modified_time:
-            self.update_available_subjects()
-            self.last_modified_time = current_modified_time
-        self.root.after(CHECK_INTERVAL, self.periodic_check)
+# Create six dropdown lists with more descriptive labels
+ttk.Label(group1, text="English:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+combo1 = ttk.Combobox(group1)
+combo1.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+combo1.bind("<Button-1>", show_subjects)
+combo1.set("Select Subject")
 
-    def create_input_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Add Exam")
-        frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+ttk.Label(group1, text="Subject 2:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+combo2 = ttk.Combobox(group1)
+combo2.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+combo2.bind("<Button-1>", show_subjects)
+combo2.set("Select Subject")
 
-        ttk.Label(frame, text="Exam Name:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        self.name_var = tk.StringVar()
-        ttk.Entry(frame, textvariable=self.name_var).grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+ttk.Label(group1, text="Subject 3:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+combo3 = ttk.Combobox(group1)
+combo3.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+combo3.bind("<Button-1>", show_subjects)
+combo3.set("Select Subject")
 
-        ttk.Label(frame, text="Date(YYYY-MM-DD):").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        self.date_var = tk.StringVar()
-        ttk.Entry(frame, textvariable=self.date_var).grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+ttk.Label(group1, text="Subject 4:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+combo4 = ttk.Combobox(group1)
+combo4.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
+combo4.bind("<Button-1>", show_subjects)
+combo4.set("Select Subject")
 
-        ttk.Label(frame, text="Difficulty:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        self.diff_var = tk.StringVar(value="Medium")
-        ttk.Combobox(frame, textvariable=self.diff_var,
-                     values=["Low", "Medium", "High"], state="readonly").grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+ttk.Label(group1, text="Subject 5:").grid(row=4, column=0, padx=5, pady=5, sticky="w")
+combo5 = ttk.Combobox(group1)
+combo5.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
+combo5.bind("<Button-1>", show_subjects)
+combo5.set("Select Subject")
 
-        ttk.Label(frame, text="Subject:").grid(row=3, column=0, sticky="w", padx=5, pady=5)
-        self.subject_var = tk.StringVar()
-        self.subject_combo = ttk.Combobox(frame, textvariable=self.subject_var,
-                                          values=self.available_subjects, state="readonly")
-        self.subject_combo.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
-        if self.available_subjects:
-            self.subject_var.set(self.available_subjects[0])
+ttk.Label(group1, text="Subject 6:").grid(row=5, column=0, padx=5, pady=5, sticky="w")
+combo6 = ttk.Combobox(group1)
+combo6.grid(row=5, column=1, padx=5, pady=5, sticky="ew")
+combo6.bind("<Button-1>", show_subjects)
+combo6.set("Select Subject")
 
-        # Make add exam larger by weighting column 0 heavier
-        frame.columnconfigure(0, weight=2)
-        frame.columnconfigure(1, weight=1)
+# Create the confirm button with improved styling
+confirm_button = ttk.Button(root, text="Confirm Selection", command=confirm_selection)
+confirm_button.grid(row=1, column=0, columnspan=2, pady=10, padx=10, sticky="ew")
 
-        # Add Exam (larger) and Clear All Exams side by side
-        ttk.Button(frame, text="Add Exam", command=self.add_exam).grid(row=4, column=0, padx=5, pady=5, sticky="ew")
-        ttk.Button(frame, text="Clear All Exams", command=self.clear_exams).grid(row=4, column=1, padx=5, pady=5, sticky="ew")
+# Center the window on the screen (using the new dimensions)
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+x = int((screen_width - window_width) / 2)
+y = int((screen_height - window_height) / 2)
+root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        # Subject selector below spanning both columns
-        ttk.Button(frame, text="Open Subject Selector",
-                   command=self.run_subject_selector).grid(row=5, column=0, columnspan=2, pady=5, sticky="ew")
-
-        # Study buttons side by side with start larger
-        # (column weights already set)
-        ttk.Button(frame, text="Start to Study", command=self.start_study).grid(row=6, column=0, padx=5, pady=5, sticky="ew")
-        ttk.Button(frame, text="Open Study Time", command=self.start_studytime).grid(row=6, column=1, padx=5, pady=5, sticky="ew")
-
-    def create_list_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Review Order")
-        frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-
-        cols = ("name", "datetime", "difficulty", "subject", "priority")
-        self.tree = ttk.Treeview(frame, columns=cols, show="headings")
-        for col in cols:
-            self.tree.heading(col, text=col.title())
-            self.tree.column(col, width=100, stretch=tk.YES)
-        self.tree.grid(row=0, column=0, sticky="nsew")
-
-        scrollbar = ttk.Scrollbar(frame, command=self.tree.yview, orient=tk.VERTICAL)
-        self.tree.configure(yscroll=scrollbar.set)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
-        frame.rowconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
-        self.root.columnconfigure(0, weight=1)
-
-    def add_exam(self):
-        name = self.name_var.get().strip()
-        date_str = self.date_var.get().strip()
-        diff = self.diff_var.get()
-        subject = self.subject_var.get()
-        if not name or not date_str or not subject:
-            messagebox.showwarning("Input Error", "Please fill in all fields.")
-            return
-        try:
-            exam_dt = datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            messagebox.showerror("Format Error", "Date format should be YYYY-MM-DD.")
-            return
-        exam = {"name": name, "datetime": exam_dt, "difficulty": diff, "subject": subject}
-        self.exams.append(exam)
-        self.save_exam_to_csv(exam)
-        self.name_var.set("")
-        self.date_var.set("")
-        self.diff_var.set("Medium")
-        self.subject_var.set(self.available_subjects[0] if self.available_subjects else "")
-        self.show_priority()
-        messagebox.showinfo("Success", f"Exam '{name}' added.")
-
-    def start_study(self):
-        try:
-            subprocess.Popen(["python", "clockapp.py"])
-            messagebox.showinfo("Info", "Clock app opened for study time.")
-        except FileNotFoundError:
-            messagebox.showerror("Error", "clockapp.py not found.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Error running clock app: {e}")
-
-    def start_studytime(self):
-        try:
-            subprocess.Popen(["python", "studytime.py"])
-            messagebox.showinfo("Info", "Study Time app opened.")
-        except FileNotFoundError:
-            messagebox.showerror("Error", "studytime.py not found.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Error running Study Time app: {e}")
-
-    def save_exam_to_csv(self, exam):
-        try:
-            with open(CSV_FILE, mode='a', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow([exam['name'], exam['datetime'].strftime("%Y-%m-%d"), exam['difficulty'], exam['subject']])
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Error saving exam: {e}")
-
-    def load_exams_from_csv(self):
-        if not os.path.exists(CSV_FILE):
-            return
-        try:
-            with open(CSV_FILE, mode='r', newline='', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if len(row) == 4:
-                        name, date_str, diff, subject = row
-                        try:
-                            exam_dt = datetime.strptime(date_str, "%Y-%m-%d")
-                            self.exams.append({"name": name, "datetime": exam_dt, "difficulty": diff, "subject": subject})
-                        except ValueError:
-                            continue
-            self.show_priority()
-        except Exception as e:
-            messagebox.showerror("Load Error", f"Error loading exams: {e}")
-
-    def clear_exams(self):
-        if messagebox.askyesno("Confirm", "Delete all exams?"):
-            self.exams.clear()
-            if os.path.exists(CSV_FILE):
-                with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
-                    pass
-            self.show_priority()
-
-    def show_priority(self):
-        for i in self.tree.get_children():
-            self.tree.delete(i)
-        prioritized = sorted(self.exams, key=lambda e: self.compute_priority(e), reverse=True)
-        for ex in prioritized:
-            pr = self.compute_priority(ex)
-            dt_str = ex['datetime'].strftime("%d-%m-%Y")
-            self.tree.insert('', 'end', values=(ex['name'], dt_str, ex['difficulty'], ex['subject'], f"{pr:.2f}"))
-
-    def compute_priority(self, exam):
-        now = datetime.now()
-        delta = (exam['datetime'] - now).total_seconds() / 86400
-        return float('inf') if delta <= 0 else self.difficulty_score(exam['difficulty']) / (delta + 1e-9)
-
-    def difficulty_score(self, level):
-        return {"Low": 1, "Medium": 2, "High": 3}.get(level, 1)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = ExamTodoApp(root)
-    root.mainloop()
+# Run the main loop
+root.mainloop()
