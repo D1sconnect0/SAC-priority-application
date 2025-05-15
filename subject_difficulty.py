@@ -3,11 +3,9 @@ from tkinter import ttk, messagebox
 import csv
 import os
 
-# Paths to CSV files
+# Path to the difficulty CSV
 DIFFICULTY_FILE = os.path.join('programs', 'difficulty.csv')
-STUDY_SCORES_FILE = os.path.join('programs', 'study_scores.csv')
-SELECTED_SUBJECTS_FILE = os.path.join('programs', 'selected_subjects.csv')
-CHECK_INTERVAL = 2000  # milliseconds
+CHECK_INTERVAL = 2000  # milliseconds to check for header change
 
 def read_csv(filename):
     """
@@ -24,80 +22,54 @@ class CSVViewerApp:
         self.root = root
         self.root.title("Subject Difficulty Viewer")
 
-        # Track last modification times
-        self.diff_mtime = self.get_mtime(DIFFICULTY_FILE)
-        self.selected_mtime = self.get_mtime(SELECTED_SUBJECTS_FILE)
-
-        # Create treeview
-        self.tree = ttk.Treeview(root)
-        self.tree.pack(expand=True, fill="both")
-
-        # Initial load of difficulty data
-        self.load_difficulty()
-
-        # Start periodic checks
-        self.root.after(CHECK_INTERVAL, self.periodic_check)
-
-    def get_mtime(self, path):
-        return os.path.getmtime(path) if os.path.exists(path) else None
-
-    def load_difficulty(self):
+        # Load initial CSV data
         try:
             data = read_csv(DIFFICULTY_FILE)
         except FileNotFoundError as e:
             messagebox.showerror("Error", str(e))
-            return
-        # Clear existing entries
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        # Populate columns and rows
-        headers = data[0]
-        self.tree["columns"] = headers
-        self.tree["show"] = "headings"
-        for col in headers:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=100, anchor='center')
-        for row in data[1:]:
-            if len(row) == len(headers):
-                self.tree.insert("", tk.END, values=row)
+            data = []
 
-    def clear_csv(self, path, keep_header=False):
-        """Clear CSV file contents, optionally preserving header."""
-        try:
-            if os.path.exists(path):
-                if keep_header:
-                    rows = read_csv(path)
-                    header = rows[0]
-                    with open(path, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.writer(f)
-                        writer.writerow(header)
-                else:
-                    open(path, 'w', newline='', encoding='utf-8').close()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to clear '{path}': {e}")
+        # Store initial headers
+        self.headers = data[0] if data else []
+
+        # Create treeview widget
+        self.tree = ttk.Treeview(root)
+        self.tree.pack(expand=True, fill="both")
+
+        # Populate if data exists
+        if self.headers:
+            self.tree["columns"] = self.headers
+            self.tree["show"] = "headings"
+            for col in self.headers:
+                self.tree.heading(col, text=col)
+                self.tree.column(col, width=100, anchor='center')
+            for row in data[1:]:
+                if len(row) == len(self.headers):
+                    self.tree.insert("", tk.END, values=row)
+
+        # Start periodic check for header changes
+        self.root.after(CHECK_INTERVAL, self.periodic_check)
 
     def periodic_check(self):
-        # Check difficulty.csv changes
-        new_diff_mtime = self.get_mtime(DIFFICULTY_FILE)
-        if new_diff_mtime and new_diff_mtime != self.diff_mtime:
-            self.diff_mtime = new_diff_mtime
-            self.load_difficulty()
-
-        # Check selected_subjects.csv changes
-        new_sel_mtime = self.get_mtime(SELECTED_SUBJECTS_FILE)
-        if new_sel_mtime and new_sel_mtime != self.selected_mtime:
-            self.selected_mtime = new_sel_mtime
-            # Clear both study_scores.csv and difficulty.csv when subjects change
-            self.clear_csv(STUDY_SCORES_FILE)
-            self.clear_csv(DIFFICULTY_FILE)
-            messagebox.showinfo(
-                "Info",
-                f"Detected change in {SELECTED_SUBJECTS_FILE}; cleared study_scores.csv and difficulty.csv."
-            )
-            # Clear displayed data
+        # Check for header change
+        try:
+            data = read_csv(DIFFICULTY_FILE)
+        except FileNotFoundError:
+            self.root.after(CHECK_INTERVAL, self.periodic_check)
+            return
+        new_headers = data[0] if data else []
+        # If headers changed (e.g., Subject column renamed)
+        if new_headers and new_headers != self.headers:
+            # Clear all displayed rows (scores)
             for item in self.tree.get_children():
                 self.tree.delete(item)
-
+            messagebox.showinfo("Info", "CSV headers changed; all scores cleared.")
+            # Update treeview columns to new headers
+            self.headers = new_headers
+            self.tree["columns"] = self.headers
+            for col in self.headers:
+                self.tree.heading(col, text=col)
+                self.tree.column(col, width=100, anchor='center')
         # Schedule next check
         self.root.after(CHECK_INTERVAL, self.periodic_check)
 
