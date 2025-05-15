@@ -7,20 +7,18 @@ import subprocess
 
 # File paths
 CSV_FILE = "programs/exams.csv"
-BACKUP_FILE = "programs/exams_backup.csv"
 SUBJECTS_FILE = "programs/selected_subjects.csv"
-TEST_SCORES_FILE = "programs/test_scores.csv"
-PRIORITIZED_FILE = "programs/prioritized_output.csv"
-LAUNCH_COUNT_FILE = "programs/launch_count.txt"
+TEST_SCORES_FILE = "programs\study_scores.csv"
+DIFFICULTY_FILE = "programs\difficulty.csv"
 CHECK_INTERVAL = 1000
 
 
 # Load per-subject difficulty from prioritized_output.csv if available, else from TEST_SCORES_FILE
 def load_difficulties():
     difficulties = {}
-    if os.path.exists(PRIORITIZED_FILE):
+    if os.path.exists(DIFFICULTY_FILE):
         try:
-            with open(PRIORITIZED_FILE, mode='r', newline='', encoding='utf-8') as f:
+            with open(DIFFICULTY_FILE, mode='r', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     subj = row.get('subject') or row.get('Subject')
@@ -61,7 +59,7 @@ class ExamTodoApp:
         self.periodic_check()
 
     def get_prioritized_modified_time(self):
-        return os.path.getmtime(PRIORITIZED_FILE) if os.path.exists(PRIORITIZED_FILE) else None
+        return os.path.getmtime(DIFFICULTY_FILE) if os.path.exists(DIFFICULTY_FILE) else None
 
     def load_available_subjects(self):
         subjects = []
@@ -92,6 +90,15 @@ class ExamTodoApp:
             messagebox.showerror("Error", "testscore.py not found.")
         except Exception as e:
             messagebox.showerror("Error", f"Error running test score app: {e}")
+
+    def open_subject_difficulty_app(self):
+        try:
+            subprocess.Popen(["python", "subject_difficulty.py"])
+            messagebox.showinfo("Info", "Subject Difficulty app opened.")
+        except FileNotFoundError:
+            messagebox.showerror("Error", "subject_difficulty.py not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error running subject difficulty app: {e}")
 
     def periodic_check(self):
         current_mod = self.get_prioritized_modified_time()
@@ -134,6 +141,7 @@ class ExamTodoApp:
         ttk.Button(button_frame, text="Start to Study", command=self.start_study).pack(fill='x', pady=2)
         ttk.Button(button_frame, text="Open Study Time", command=self.start_studytime).pack(fill='x', pady=2)
         ttk.Button(button_frame, text="Open Test Score App", command=self.open_testscore_app).pack(fill='x', pady=2)
+        ttk.Button(button_frame, text="Open Subject Difficulty", command=self.open_subject_difficulty_app).pack(fill='x', pady=2)
 
         self.subject_var.trace_add("write", self.update_difficulty_display)
 
