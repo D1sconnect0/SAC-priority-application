@@ -68,7 +68,8 @@ class ExamTodoApp:
                 with open(SUBJECTS_FILE, mode='r', newline='', encoding='utf-8') as f:
                     reader = csv.reader(f)
                     for row in reader:
-                        subjects.extend(row)
+                        if row:  # Only add if row is not empty
+                            subjects.extend(row)
             except Exception as e:
                 messagebox.showerror("Error", f"Error loading subject file: {e}")
         return sorted(set(subjects))
@@ -262,14 +263,27 @@ class ExamTodoApp:
         delta = (exam['datetime'] - now).total_seconds() / 86400
         return float('inf') if delta <= 0 else exam['difficulty'] / (delta + 1e-9)
 
-if __name__ == "__main__":
-    # Launch subject selector before main app
+def is_subjects_file_empty():
+    if not os.path.exists(SUBJECTS_FILE):
+        return True
     try:
-        subprocess.Popen(["python", "Subject selection.py"])
-        # Optionally, wait or prompt the user to complete selection
-        messagebox.showinfo("Info", "Subject selector opened. Close it when done to continue.")
-    except Exception as e:
-        print(f"Could not open subject selector: {e}")
+        with open(SUBJECTS_FILE, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:  # If any row has content
+                    return False
+        return True
+    except Exception:
+        return True
+
+if __name__ == "__main__":
+    # Only launch subject selector if selected_subjects.csv is empty or doesn't exist
+    if is_subjects_file_empty():
+        try:
+            subprocess.Popen(["python", "Subject selection.py"])
+            messagebox.showinfo("Info", "Subject selector opened. Close it when done to continue.")
+        except Exception as e:
+            print(f"Could not open subject selector: {e}")
 
     root = tk.Tk()
     app = ExamTodoApp(root)
