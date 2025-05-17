@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 class StudyTimeApp(tk.Tk):
-    def __init__(self, csv_path="studytime.csv"):
+    def __init__(self, csv_path="programs/tudytime.csv"):
         super().__init__()
         self.title("📚 Study Time Tracker")
         self.geometry("500x400")

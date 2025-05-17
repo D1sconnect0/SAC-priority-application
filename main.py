@@ -76,10 +76,10 @@ class ExamTodoApp:
 
     def run_subject_selector(self):
         try:
-            subprocess.Popen(["python", "Subject selection.py"])
+            subprocess.Popen(["python", "Subject_selection.py"])
             messagebox.showinfo("Info", "Subject selector opened. Please return after selecting subjects.")
         except FileNotFoundError:
-            messagebox.showerror("Error", "Subject selection.py not found.")
+            messagebox.showerror("Error", "Subject_selection.py not found.")
         except Exception as e:
             messagebox.showerror("Error", f"Error running subject selector: {e}")
 
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     # Only launch subject selector if selected_subjects.csv is empty or doesn't exist
     if is_subjects_file_empty():
         try:
-            subprocess.Popen(["python", "Subject selection.py"])
+            subprocess.Popen(["python", "Subject_selection.py"])
             messagebox.showinfo("Info", "Subject selector opened. Close it when done to continue.")
         except Exception as e:
             print(f"Could not open subject selector: {e}")

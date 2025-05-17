@@ -151,7 +151,7 @@ class TimezoneClockApp(tk.Tk):
     def _on_close(self):
         # Record the study time in the CSV file when the app is closed
         elapsed_time = datetime.now() - self.start_time
-        with open('studytime.csv', mode='a', newline='') as file:
+        with open('programs/studytime.csv', mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(elapsed_time)])
 
