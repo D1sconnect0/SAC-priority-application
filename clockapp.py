@@ -1,10 +1,12 @@
 import sys
 import csv
+import os
+from pathlib import Path
 from datetime import datetime, timedelta
 
 try:
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import ttk, messagebox
 except ImportError:
     print("Tkinter module is not installed. Please install it before running the application.")
     sys.exit(1)
@@ -25,6 +27,11 @@ class TimezoneClockApp(tk.Tk):
         self.title("Timezone Clock")
         self.geometry("1000x600")
         self.resizable(True, True)
+
+        # Setup data directory and file
+        self.data_dir = Path.home() / "TimezoneClockData"
+        self.data_file = self.data_dir / "studytime.csv"
+        os.makedirs(self.data_dir, exist_ok=True)
 
         # Record when the app was opened
         self.start_time = datetime.now()
@@ -151,9 +158,35 @@ class TimezoneClockApp(tk.Tk):
     def _on_close(self):
         # Record the study time in the CSV file when the app is closed
         elapsed_time = datetime.now() - self.start_time
-        with open('programs/studytime.csv', mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(elapsed_time)])
+        
+        try:
+            # Check if file exists to write header
+            file_exists = os.path.isfile(self.data_file)
+            
+            with open(self.data_file, mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                if not file_exists:
+                    writer.writerow(['Timestamp', 'Duration'])  # Write header if new file
+                writer.writerow([
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                    str(elapsed_time)
+                ])
+                
+        except PermissionError:
+            messagebox.showerror(
+                "Permission Denied", 
+                f"Cannot write to {self.data_file}. Please check your permissions."
+            )
+        except OSError as e:
+            messagebox.showerror(
+                "File System Error", 
+                f"Could not save study time: {e.strerror}"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Error", 
+                f"An unexpected error occurred: {str(e)}"
+            )
 
         self._running = False
         self.destroy()
