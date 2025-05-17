@@ -48,6 +48,7 @@ def confirm_selection():
     except Exception as e:
         messagebox.showerror("Error", f"An error occurred while saving the file: {e}")
 
+
 # Create the main window
 root = tk.Tk()
 root.title("Subject Selection")
