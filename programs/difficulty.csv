@@ -1,1 +1,4 @@
-
+Subject,tests_taken,mean_score,planned_tests,difficulty
+English,2,83.5,7,0.5775
+Method Mathematics,2,96.5,7,0.1225
+Specialist Mathematics,2,67.5,7,1.1375

@@ -7,11 +7,11 @@ class StudyTimeApp(tk.Tk):
     def __init__(self, csv_path="programs/studytime.csv"):
         super().__init__()
         self.title("📚 Study Time Tracker")
-        self.geometry("700x500")  # 加大窗口尺寸以更好显示
+        self.geometry("700x500")  # Increase window size for better display
         self.configure(bg="#f0f4f8")
         self.csv_path = csv_path
 
-        # 设置样式
+        # Set style
         style = ttk.Style(self)
         style.theme_use('clam')
         style.configure(
@@ -25,19 +25,19 @@ class StudyTimeApp(tk.Tk):
         style.map('Treeview', background=[('selected', '#aed6f1')])
         style.configure('Treeview.Heading', font=('Helvetica', 11, 'bold'), background='#d6eaf8')
 
-        # 主框架
+        # Main frame
         main_frame = ttk.Frame(self, padding=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 标题
+        # Title
         title_label = ttk.Label(main_frame, text="Study Time Records", font=('Helvetica', 16, 'bold'))
         title_label.pack(anchor=tk.W, pady=(0, 10))
 
-        # 表格框架
+        # Table frame
         tree_frame = ttk.Frame(main_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 表格设置
+        # Table configuration
         self.tree = ttk.Treeview(
             tree_frame, 
             columns=("Timestamp", "Duration"), 
@@ -49,7 +49,7 @@ class StudyTimeApp(tk.Tk):
         self.tree.column("Timestamp", anchor=tk.CENTER, width=220)
         self.tree.column("Duration", anchor=tk.CENTER, width=150)
 
-        # 滚动条
+        # Scrollbars
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
@@ -57,11 +57,11 @@ class StudyTimeApp(tk.Tk):
         hsb.pack(side=tk.BOTTOM, fill=tk.X)
         self.tree.pack(fill=tk.BOTH, expand=True)
 
-        # 分隔线
+        # Separator line
         sep = ttk.Separator(main_frame, orient='horizontal')
         sep.pack(fill=tk.X, pady=15)
 
-        # 总计框架
+        # Total frame
         total_frame = ttk.Frame(main_frame)
         total_frame.pack(fill=tk.X)
 
@@ -72,21 +72,21 @@ class StudyTimeApp(tk.Tk):
         )
         self.total_label.pack(side=tk.LEFT, padx=5)
 
-        # 按钮框架
+        # Button frame
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
 
-        # 刷新按钮
+        # Refresh button
         refresh_btn = ttk.Button(button_frame, text="🔄 Refresh", command=self.load_and_display_data)
         refresh_btn.pack(side=tk.RIGHT, padx=5)
 
-        # 初始加载数据
+        # Initial data load
         self.load_and_display_data()
 
     def parse_timedelta(self, td_str):
-        """将时间字符串(HH:MM:SS.ssssss)转换为timedelta对象"""
+        """Convert time string (HH:MM:SS.ssssss) to a timedelta object"""
         try:
-            # 处理带微秒的时间格式
+            # Handle time format with microseconds
             if '.' in td_str:
                 time_part, micro_part = td_str.split('.')
                 microseconds = int(micro_part)
@@ -109,7 +109,7 @@ class StudyTimeApp(tk.Tk):
             return timedelta(0)
 
     def format_timedelta(self, td):
-        """格式化timedelta为HH:MM:SS，忽略微秒"""
+        """Format timedelta to HH:MM:SS, ignoring microseconds"""
         total_seconds = int(td.total_seconds())
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
@@ -117,40 +117,40 @@ class StudyTimeApp(tk.Tk):
         return f"{hours}:{minutes:02d}:{seconds:02d}"
 
     def load_and_display_data(self):
-        """读取CSV文件并显示数据"""
+        """Read CSV file and display data"""
         try:
             with open(self.csv_path, newline='', encoding='utf-8') as csvfile:
-                # 清空现有数据
+                # Clear existing data
                 for row in self.tree.get_children():
                     self.tree.delete(row)
 
                 total_time = timedelta()
                 reader = csv.reader(csvfile)
                 
-                # 读取并显示数据
+                # Read and display data
                 for row_num, row in enumerate(reader):
                     if len(row) < 2:
                         continue
                     
                     timestamp_str, duration_str = row[0], row[1]
                     
-                    # 跳过可能的标题行
+                    # Skip possible header row
                     if row_num == 0 and (duration_str.lower() == "duration" or ":" not in duration_str):
                         continue
                     
                     duration = self.parse_timedelta(duration_str)
                     total_time += duration
                     
-                    # 格式化时间为HH:MM:SS
+                    # Format time to HH:MM:SS
                     formatted_time = self.format_timedelta(duration)
                     
-                    # 添加到表格
+                    # Add to table
                     self.tree.insert("", "end", values=(
                         timestamp_str,
                         formatted_time
                     ))
 
-                # 更新总时间
+                # Update total time
                 total_formatted = self.format_timedelta(total_time)
                 h, m, s = map(int, total_formatted.split(':'))
                 self.total_label.config(
