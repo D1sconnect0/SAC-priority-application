@@ -6,6 +6,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
+import importlib.util
 
 # Use os.path.join for cross-platform file paths
 SUBJECTS_FILE = os.path.join("programs", "selected_subjects.csv")
@@ -67,6 +68,23 @@ class StudyScoreApp:
         save_btn.grid(row=0, column=0, padx=5)
         summary_btn = ttk.Button(btn_frame, text="Show Summary", command=self.display_summary)
         summary_btn.grid(row=0, column=1, padx=5)
+        # Add API fetch button
+        fetch_btn = ttk.Button(btn_frame, text="Fetch from API", command=self.fetch_from_api)
+        fetch_btn.grid(row=0, column=2, padx=5)
+
+    def fetch_from_api(self):
+        # Dynamically import API.py and call fetch_and_save_scores
+        try:
+            api_path = os.path.join(os.path.dirname(__file__), "API.py")
+            spec = importlib.util.spec_from_file_location("API", api_path)
+            api = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(api)
+            api.fetch_and_save_scores(SCORES_FILE)
+            messagebox.showinfo("Success", "Fetched data from API and updated scores.")
+            self.load_existing_scores()
+            self.display_summary()
+        except Exception as e:
+            messagebox.showerror("API Error", f"Failed to fetch from API: {e}")
 
     def build_tab(self, parent, sac_index):
         frame = ttk.LabelFrame(parent, text=f"Enter Scores for SAC {sac_index}")

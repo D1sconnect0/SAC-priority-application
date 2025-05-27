@@ -8,6 +8,7 @@ import math
 from ttkbootstrap import Style
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import importlib.util
 
 # File paths
 CSV_FILE = "programs/exams.csv"
@@ -481,7 +482,24 @@ def is_subjects_file_empty():
     except Exception:
         return True
 
+def update_scores_from_api():
+    """
+    Calls API.py's fetch_and_save_scores and fetch_and_save_exams to update CSVs before UI loads.
+    """
+    try:
+        api_path = os.path.join(os.path.dirname(__file__), "API.py")
+        spec = importlib.util.spec_from_file_location("API", api_path)
+        api = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api)
+        api.fetch_and_save_scores(TEST_SCORES_FILE)
+        api.fetch_and_save_exams(CSV_FILE)
+    except Exception as e:
+        print(f"Warning: Could not update scores/exams from API: {e}")
+
 if __name__ == "__main__":
+    # Update CSVs from API before UI loads
+    update_scores_from_api()
+
     if is_subjects_file_empty():
         try:
             subprocess.Popen(["python", "Subject_selection.py"])
