@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import csv
 import os
 import subprocess
+import math
 from ttkbootstrap import Style
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -11,8 +12,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # File paths
 CSV_FILE = "programs/exams.csv"
 SUBJECTS_FILE = "programs/selected_subjects.csv"
-TEST_SCORES_FILE = r"programs/study_scores.csv"
-DIFFICULTY_FILE = r"programs/difficulty.csv"
+TEST_SCORES_FILE = "programs/study_scores.csv"
+DIFFICULTY_FILE = "programs/difficulty.csv"
 CHECK_INTERVAL = 1000
 
 # Initialize theme
@@ -28,18 +29,24 @@ def load_difficulties():
                     subj = row.get('subject') or row.get('Subject')
                     diff = row.get('difficulty') or row.get('Difficulty')
                     try:
-                        difficulties[subj] = float(diff)
+                        difficulty = float(diff)
+                        if math.isnan(difficulty):
+                            continue
+                        difficulties[subj] = difficulty
                     except (TypeError, ValueError):
                         continue
         except Exception as e:
-            messagebox.showerror("Error", f"Error loading prioritized difficulties: {e}")
+            messagebox.showerror("Error", f"Error loading difficulties: {e}")
     elif os.path.exists(TEST_SCORES_FILE):
         try:
             with open(TEST_SCORES_FILE, mode='r', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        difficulties[row['subject']] = float(row.get('sac_score_percent', 0))
+                        difficulty = float(row.get('sac_score_percent', 0))
+                        if math.isnan(difficulty):
+                            continue
+                        difficulties[row['subject']] = difficulty
                     except (TypeError, ValueError):
                         continue
         except Exception as e:
@@ -60,7 +67,7 @@ class ExamTodoApp:
         # Load data
         self.available_subjects = self.load_available_subjects()
         self.test_scores = load_difficulties()
-        self.last_modified_time = self.get_prioritized_modified_time()
+        self.last_modified_time = self.get_modified_time()
         self.exams = []
         
         # Create UI components
@@ -70,7 +77,7 @@ class ExamTodoApp:
         self.load_exams_from_csv()
         self.periodic_check()
 
-    def get_prioritized_modified_time(self):
+    def get_modified_time(self):
         return os.path.getmtime(DIFFICULTY_FILE) if os.path.exists(DIFFICULTY_FILE) else None
 
     def load_available_subjects(self):
@@ -83,7 +90,7 @@ class ExamTodoApp:
                         if row:
                             subjects.extend(row)
             except Exception as e:
-                messagebox.showerror("Error", f"Error loading subject file: {e}")
+                messagebox.showerror("Error", f"Error loading subjects: {e}")
         return sorted(set(subjects))
 
     def create_input_frame(self):
@@ -189,15 +196,13 @@ class ExamTodoApp:
         frame.rowconfigure(0, weight=1)
 
     def create_visualization_frame(self):
-        """Create visualization panel"""
         frame = ttk.LabelFrame(self.root, text=" Data Visualization ", bootstyle='info')
         frame.grid(row=0, column=1, rowspan=2, padx=15, pady=15, sticky="nsew")
         
-        # Create notebook
         notebook = ttk.Notebook(frame, bootstyle='info')
         notebook.pack(fill='both', expand=True)
         
-        # Priority distribution pie chart
+        # Pie chart
         pie_frame = ttk.Frame(notebook)
         self.pie_fig, self.pie_ax = plt.subplots(figsize=(6, 5), dpi=80)
         self.pie_fig.patch.set_facecolor('#4a4a4a')
@@ -206,7 +211,7 @@ class ExamTodoApp:
         self.pie_canvas.get_tk_widget().pack(fill='both', expand=True)
         notebook.add(pie_frame, text="Priority Distribution")
         
-        # Exam timeline
+        # Timeline
         timeline_frame = ttk.Frame(notebook)
         self.timeline_fig, self.timeline_ax = plt.subplots(figsize=(6, 5), dpi=80)
         self.timeline_fig.patch.set_facecolor('#4a4a4a')
@@ -215,7 +220,7 @@ class ExamTodoApp:
         self.timeline_canvas.get_tk_widget().pack(fill='both', expand=True)
         notebook.add(timeline_frame, text="Exam Timeline")
         
-        # Difficulty progress bars
+        # Progress bars
         progress_frame = ttk.Frame(notebook)
         self.difficulty_bars = {}
         for subj in self.available_subjects:
@@ -237,15 +242,18 @@ class ExamTodoApp:
         self.update_visualizations()
 
     def update_visualizations(self):
-        """Update all visualizations"""
-        # Update pie chart
         self.pie_ax.clear()
         if self.exams:
-            priorities = [self.compute_priority(e) for e in self.exams]
+            subject_counts = {}
+            for exam in self.exams:
+                subj = exam['subject']
+                subject_counts[subj] = subject_counts.get(subj, 0) + 1
+
+            priorities = [self.compute_priority(e, subject_counts) for e in self.exams]
             labels = [e['name'] for e in self.exams]
             colors = plt.cm.Paired.colors[:len(priorities)]
             
-            wedges, texts, autotexts = self.pie_ax.pie(
+            self.pie_ax.pie(
                 priorities,
                 labels=labels,
                 autopct='%1.1f%%',
@@ -256,7 +264,6 @@ class ExamTodoApp:
             self.pie_ax.axis('equal')
             self.pie_canvas.draw()
         
-        # Update timeline
         self.timeline_ax.clear()
         if self.exams:
             dates = [e['datetime'] for e in self.exams]
@@ -278,7 +285,6 @@ class ExamTodoApp:
             self.timeline_fig.autofmt_xdate()
             self.timeline_canvas.draw()
         
-        # Update difficulty bars
         for subj, bar in self.difficulty_bars.items():
             diff = self.test_scores.get(subj, 0)
             bar['value'] = diff * 100
@@ -298,6 +304,9 @@ class ExamTodoApp:
         date_str = self.date_var.get().strip()
         subject = self.subject_var.get()
         difficulty_val = self.test_scores.get(subject, 0.5)
+        
+        if math.isnan(difficulty_val):
+            difficulty_val = 0.5
 
         if not name or not date_str or not subject:
             messagebox.showwarning("Input Error", "Please fill in all fields.", parent=self.root)
@@ -342,10 +351,13 @@ class ExamTodoApp:
                         name, date_str, diff, subject = row
                         try:
                             exam_dt = datetime.strptime(date_str, "%Y-%m-%d")
+                            difficulty = float(diff)
+                            if math.isnan(difficulty):
+                                continue
                             self.exams.append({
                                 "name": name,
                                 "datetime": exam_dt,
-                                "difficulty": float(diff),
+                                "difficulty": difficulty,
                                 "subject": subject
                             })
                         except ValueError:
@@ -367,18 +379,27 @@ class ExamTodoApp:
         for i in self.tree.get_children():
             self.tree.delete(i)
         
-        # Configure tags
         self.tree.tag_configure('high', background='#e74c3c', foreground='white')
         self.tree.tag_configure('medium', background='#f1c40f')
         self.tree.tag_configure('low', background='#2ecc71')
         
-        prioritized = sorted(self.exams, key=lambda e: self.compute_priority(e), reverse=True)
-        for ex in prioritized:
-            pr = self.compute_priority(ex)
+        subject_counts = {}
+        for exam in self.exams:
+            subj = exam['subject']
+            subject_counts[subj] = subject_counts.get(subj, 0) + 1
+        
+        prioritized_with_pr = []
+        for exam in self.exams:
+            pr = self.compute_priority(exam, subject_counts)
+            prioritized_with_pr.append((pr, exam))
+        
+        prioritized_with_pr.sort(key=lambda x: x[0], reverse=True)
+        
+        for pr, ex in prioritized_with_pr:
             days_left = (ex['datetime'] - datetime.now()).days
             dt_str = ex['datetime'].strftime("%d-%m-%Y")
             
-            # Determine tag
+            tags = ()
             if days_left <= 0:
                 tags = ('high',)
             elif days_left <= 3:
@@ -402,13 +423,16 @@ class ExamTodoApp:
         
         self.update_visualizations()
 
-    def compute_priority(self, exam):
+    def compute_priority(self, exam, subject_counts):
         now = datetime.now()
         delta = (exam['datetime'] - now).total_seconds() / 86400
-        return float('inf') if delta <= 0 else exam['difficulty'] / (delta + 1e-9)
+        if delta <= 0:
+            return float('inf')
+        count = subject_counts.get(exam['subject'], 1)
+        return exam['difficulty'] / (delta + 1e-9) * count
 
     def periodic_check(self):
-        current_mod = self.get_prioritized_modified_time()
+        current_mod = self.get_modified_time()
         if current_mod and current_mod != self.last_modified_time:
             self.test_scores = load_difficulties()
             self.last_modified_time = current_mod
@@ -417,35 +441,30 @@ class ExamTodoApp:
     def run_subject_selector(self):
         try:
             subprocess.Popen(["python", "Subject_selection.py"])
-            messagebox.showinfo("Info", "Subject selector opened.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {e}", parent=self.root)
 
     def start_study(self):
         try:
             subprocess.Popen(["python", "clockapp.py"])
-            messagebox.showinfo("Info", "Study timer started.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {e}", parent=self.root)
 
     def start_studytime(self):
         try:
             subprocess.Popen(["python", "studytime.py"])
-            messagebox.showinfo("Info", "Study time tracker opened.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {e}", parent=self.root)
 
     def open_testscore_app(self):
         try:
             subprocess.Popen(["python", "testscore.py"])
-            messagebox.showinfo("Info", "Test score app opened.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {e}", parent=self.root)
 
     def open_subject_difficulty_app(self):
         try:
             subprocess.Popen(["python", "subject_difficulty.py"])
-            messagebox.showinfo("Info", "Subject difficulty app opened.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {e}", parent=self.root)
 
