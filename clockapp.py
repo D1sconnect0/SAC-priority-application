@@ -30,7 +30,8 @@ class TimezoneClockApp(tk.Tk):
 
         # Setup data directory and file
         self.data_dir = Path.home() / "TimezoneClockData"
-        self.data_file = self.data_dir / "studytime.csv"
+        #self.data_file = self.data_dir / "studytime.csv"
+        self.data_file = "programs/studytime.csv"
         os.makedirs(self.data_dir, exist_ok=True)
 
         # Record when the app was opened
@@ -84,8 +85,8 @@ class TimezoneClockApp(tk.Tk):
         self.search_entry.grid(row=0, column=1, sticky='w')
         self.search_entry.bind("<KeyRelease>", lambda e: self.filter_timezones())
 
-        self.all_timezones = sorted(available_timezones())
-        self.filtered_timezones = self.all_timezones.copy()
+        self.all_timezones = available_timezones()
+        self.filtered_timezones = self.all_timezones
         self.selected_tz = tk.StringVar(value="UTC")
         self.tz_combo = ttk.Combobox(
             self.search_frame,
@@ -143,8 +144,9 @@ class TimezoneClockApp(tk.Tk):
                 self.date_label.config(text=now.strftime("%A, %B %d, %Y"))
                 self.time_label.config(text=now.strftime("%H:%M:%S"))
             except Exception:
+                now = datetime.now()
                 self.date_label.config(text="Invalid timezone")
-                self.time_label.config(text="--:--:--")
+                self.time_label.config(text=now.strftime("%H:%M:%S"))
         else:
             self.date_label.config(text="Select a timezone")
             self.time_label.config(text="--:--:--")
